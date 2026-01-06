@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15
+    container_name: redmane-db
+    restart: always
+    environment:
+      POSTGRES_DB: readmedatabase
+      POSTGRES_USER: username
+      POSTGRES_PASSWORD: password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./data/REDMANE_fastapi_public_data-sem_2_2025:/docker-entrypoint-initdb.d
+    ports:
+      - "5432:5432"
+    networks:
+      - redmane-network
+
+  backend:
+    build:
+      context: ./ 
+      dockerfile: ./redmane_fastapi.dockerfile
+    ports:
+      - "8888:8888"
+    environment:
+      DATABASE_URL: postgresql://username:password@db:5432/readmedatabase
+    depends_on:
+      - db
+    networks:
+      - redmane-network
+
+  frontend:
+    build:
+      context: ./ 
+      dockerfile: ./redmane_reactjs.dockerfile
+    ports:
+      - "5173:5173"
+    networks:
+      - redmane-network
+
+  nginx:
+    image: nginx:latest
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./certs:/etc/nginx/ssl:ro
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - redmane-network
+
+volumes:
+  postgres_data:
+
+networks:
+  redmane-network:
+    driver: bridge
